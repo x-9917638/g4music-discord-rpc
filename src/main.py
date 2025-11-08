@@ -13,4 +13,4 @@ app.run()
 
 # Use dbus to query gapless.
 # Will concat a property when called.
-command = "dbus-send --print-reply --dest=org.mpris.MediaPlayer2.com.github.neithern.g4music /org/mpris/MediaPlayer2 org.freedesktop.DBus.Properties.Get string:'org.mpris.MediaPlayer2.Player' string: "
+BASE_QUERY = "dbus-send --print-reply --dest=org.mpris.MediaPlayer2.com.github.neithern.g4music /org/mpris/MediaPlayer2 org.freedesktop.DBus.Properties.Get string:'org.mpris.MediaPlayer2.Player' string: "
