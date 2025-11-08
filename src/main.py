@@ -22,9 +22,6 @@ POLL_INTERVAL = 2
 # Track song changing so we aren't uploading art every 2 seconds
 song_change = True
 
-# Track pause / play
-recalculate_time = False
-
 CONFIG = get_config()
 LARGE_TEXT_TEMPLATE = Template(CONFIG["image-hover"]) if CONFIG["image-hover"] else None
 DETAILS_TEMPLATE = Template(CONFIG["details"]) if CONFIG["details"] else None
@@ -112,7 +109,7 @@ async def poll_playback_status(properties) -> str:  # pyright: ignore[reportUnkn
 
 
 async def update_activity(properties):
-    global song_change, recalculate_time
+    global song_change
     metadata = await poll_metadata(properties)
     status = await poll_playback_status(properties)
 
@@ -124,14 +121,11 @@ async def update_activity(properties):
     album = metadata.get(ALBUM)
     song = metadata.get(TITLE)
 
-    if LENGTH in metadata and status == "Playing" and (song_change == True or recalculate_time == True):
+    if LENGTH in metadata:
         pos = (await poll_position(properties) // 1000000)
         activity["ts_start"] = int(time.time()) - pos
         activity["ts_end"] = int(time.time()) - pos + (metadata[LENGTH] // 1000000)
-        recalculate_time = False
 
-    if status == "Paused":
-        activity["ts_start"], activity["ts_end"] = None, None
 
     if CONFIG["cover-art"] and song_change:
         path = await upload_image(metadata[ARTURL].removeprefix("file://"))  # pyright: ignore[reportAny]
@@ -157,13 +151,11 @@ async def update_activity(properties):
 
 
 async def on_properties_changed(_a, changed_properties: dict[str, Variant], _c):  # pyright: ignore[reportUnknownParameterType, reportMissingParameterType]
-    global song_change, recalculate_time
-    for changed, var in changed_properties.items():
+    global song_change
+    for changed, _ in changed_properties.items():
         if changed == "Metadata":
             song_change = True
-        if changed == "PlaybackStatus":
-            if var.value == "Playing":
-                recalculate_time = True
+
 
 async def upload_image(image_path: str) -> str | None:
     """
