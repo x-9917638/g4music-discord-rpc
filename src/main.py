@@ -1,3 +1,5 @@
+#! /home/some1/Documents/Python/g4music-discord-rpc/.venv/bin/python
+
 import asyncio
 import time
 from typing import Any
@@ -14,6 +16,14 @@ import requests
 
 logger = logging.getLogger(__name__)
 logger.level = logging.INFO
+
+POLL_INTERVAL = 2
+
+# Track song changing so we aren't uploading art every 2 seconds
+song_change = True
+
+# Track pause / play
+recalculate_time = False
 
 CONFIG = get_config()
 LARGE_TEXT_TEMPLATE = Template(CONFIG["image-hover"]) if CONFIG["image-hover"] else None
@@ -41,6 +51,8 @@ activity: dict[str, Any] = {  # pyright: ignore[reportExplicitAny]
     "ts_end": None
 }
 
+
+
 def get_app() -> RPC:
     while True:
         try:
@@ -60,49 +72,98 @@ def get_app() -> RPC:
 app = get_app()
 
 
-async def on_properties_changed(_a, changed_properties: dict[str, Variant], _c):  # pyright: ignore[reportUnknownParameterType, reportMissingParameterType]
-    if len(changed_properties) == 4:
-        # Useless property changes, these are sent in a group of 4.:
-        # {'CanGoNext': <dbus_fast.signature.Variant ('b', True)>,
-        # 'CanGoPrevious': <dbus_fast.signature.Variant ('b', True)>,
-        # 'CanPause': <dbus_fast.signature.Variant ('b', True)>,
-        # 'CanPlay': <dbus_fast.signature.Variant ('b', True)>}
+async def poll_position(properties) -> float:  # pyright: ignore[reportUnknownParameterType, reportMissingParameterType]
+    """Poll current playback position in microseconds"""
+    try:
+        position = await properties.call_get(  # pyright: ignore[reportUnknownMemberType, reportUnknownVariableType]
+            'org.mpris.MediaPlayer2.Player',
+            'Position'
+        )
+        return position.value if hasattr(position, 'value') else position  # pyright: ignore[reportUnknownMemberType, reportUnknownVariableType, reportUnknownArgumentType]
+    except Exception as e:
+        logger.error(f"Error polling position: {e}")
+        return 0
+
+
+async def poll_metadata(properties) -> dict[str, Any]:  # pyright: ignore[reportUnknownParameterType, reportMissingParameterType, reportExplicitAny]
+    """Poll current track metadata"""
+    try:
+        metadata = await properties.call_get(  # pyright: ignore[reportUnknownVariableType, reportUnknownMemberType]
+            'org.mpris.MediaPlayer2.Player',
+            'Metadata'
+        )
+        return {key: val.value for key, val in metadata.value.items()}  # pyright: ignore[reportUnknownVariableType, reportUnknownMemberType]
+    except Exception as e:
+        logger.error(f"Error polling metadata: {e}")
+        return {}
+
+
+async def poll_playback_status(properties) -> str:  # pyright: ignore[reportUnknownParameterType, reportMissingParameterType]
+    """Poll current playback status (Playing, Paused, Stopped)"""
+    try:
+        status = await properties.call_get(  # pyright: ignore[reportUnknownMemberType, reportUnknownVariableType]
+            'org.mpris.MediaPlayer2.Player',
+            'PlaybackStatus'
+        )
+        return status.value if hasattr(status, 'value') else status  # pyright: ignore[reportUnknownMemberType, reportUnknownVariableType, reportUnknownArgumentType]
+    except Exception as e:
+        logger.error(f"Error polling playback status: {e}")
+        return "Stopped"
+
+
+async def update_activity(properties):
+    global song_change, recalculate_time
+    metadata = await poll_metadata(properties)
+    status = await poll_playback_status(properties)
+
+    if status == "stopped":
+        app.clear()
         return
 
-    for changed, variant in changed_properties.items():
+    artist = metadata.get(ARTIST, [None])[0]
+    album = metadata.get(ALBUM)
+    song = metadata.get(TITLE)
+
+    if LENGTH in metadata and status == "Playing" and (song_change == True or recalculate_time == True):
+        pos = (await poll_position(properties) // 1000000)
+        activity["ts_start"] = int(time.time()) - pos
+        activity["ts_end"] = int(time.time()) - pos + (metadata[LENGTH] // 1000000)
+        recalculate_time = False
+
+    if status == "Paused":
+        activity["ts_start"], activity["ts_end"] = None, None
+
+    if CONFIG["cover-art"] and song_change:
+        path = await upload_image(metadata[ARTURL].removeprefix("file://"))  # pyright: ignore[reportAny]
+        activity["large_image"] = path if path else "error"
+        song_change = False
+
+    activity["details"] = DETAILS_TEMPLATE.safe_substitute(artist=artist, album=album, song=song) if DETAILS_TEMPLATE else None
+    activity["state"] = STATE_TEMPLATE.safe_substitute(artist=artist, album=album, song=song) if STATE_TEMPLATE else None
+    activity["large_text"] = LARGE_TEXT_TEMPLATE.safe_substitute(artist=artist, album=album, song=song) if LARGE_TEXT_TEMPLATE else None
+
+    if status == "Playing":
+        activity["small_image"] = "playing"
+    elif status == "Paused":
+        activity["small_image"] = "paused"
+    else:
+        activity["small_image"] = None
+
+    res = app.set_activity(**activity)
+    if res:
+        logger.debug(f"Activity updated successfully, {activity=}")
+    else:
+        logger.error("Error setting activity")
+
+
+async def on_properties_changed(_a, changed_properties: dict[str, Variant], _c):  # pyright: ignore[reportUnknownParameterType, reportMissingParameterType]
+    global song_change, recalculate_time
+    for changed, var in changed_properties.items():
         if changed == "Metadata":
-            values: dict[str, Any] = {key: val.value for key, val in variant.value.items()}  # pyright: ignore[reportAny, reportExplicitAny]
-
-            artist = values[ARTIST][0]
-            album = values[ALBUM]
-            song = values[TITLE]
-
-            if CONFIG["cover-art"]:
-                path = await upload_image(values[ARTURL].removeprefix("file://"))  # pyright: ignore[reportAny]
-                activity["large_image"] = path if path else "error"
-
-            activity["ts_start"] = int(time.time())
-            activity["ts_end"] = int(time.time()) + (values[LENGTH] // 1000000)
-
-            activity["details"] = DETAILS_TEMPLATE.safe_substitute(artist=artist, album=album, song=song) if DETAILS_TEMPLATE else None
-            activity["state"] = STATE_TEMPLATE.safe_substitute(artist=artist, album=album, song=song) if STATE_TEMPLATE else None
-            activity["large_text"] = LARGE_TEXT_TEMPLATE.safe_substitute(artist=artist, album=album, song=song) if LARGE_TEXT_TEMPLATE else None
-        elif changed == "PlaybackStatus":
-            match variant.value:  # pyright: ignore[reportAny]
-                case "Playing":
-                    activity["small_image"] = "playing"
-                case "Paused":
-                    activity["small_image"] = "paused"
-                    activity["ts_start"] = int(time.time())
-                    activity["ts_end"] = int(time.time())
-                case _:
-                    return
-        else:
-            return
-
-    print(activity)
-    _ = app.set_activity(**activity)  # pyright: ignore[reportAny, reportUnknownMemberType]
-
+            song_change = True
+        if changed == "PlaybackStatus":
+            if var.value == "Playing":
+                recalculate_time = True
 
 async def upload_image(image_path: str) -> str | None:
     """
@@ -135,7 +196,13 @@ async def main():
 
     properties.on_properties_changed(on_properties_changed)  # pyright: ignore[reportUnknownMemberType, reportAttributeAccessIssue]
 
-    await loop.create_future()
+    while True:
+        try:
+            await update_activity(properties)
+            await asyncio.sleep(POLL_INTERVAL)
+        except Exception as e:
+            logger.error(f"Error: {e}")
+            await asyncio.sleep(POLL_INTERVAL)
 
 if __name__ == "__main__":
     # app.run()
