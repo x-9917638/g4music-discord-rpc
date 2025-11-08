@@ -14,13 +14,10 @@ def get_config() -> dict[str, Any]:  # pyright: ignore[reportExplicitAny]
 
     DEFAULT_CONFIG = {
         "appid": 1436573238636576891,
-        "idle-detect": False,
         "details": "",
-        "show-queue-size": True,
-        "image-hover": "Listening to {song}",
-        "icon": True,
+        "image-hover": "Listening to ${song}",
         "cover-art": True,
-        "state": "{song} / {album} - {artist}"
+        "state": "${song} / ${album} - ${artist}"
     }
 
     os.makedirs(CONFIG_DIR, exist_ok=True)
