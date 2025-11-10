@@ -221,7 +221,7 @@ async def main():
             break
         except DBusError:
             logger.warning("No player detected, retrying connection.")
-            await asyncio.sleep(2)  
+            await asyncio.sleep(2)
 
     properties.on_properties_changed(on_properties_changed)  # pyright: ignore[reportUnknownMemberType, reportAttributeAccessIssue]
 
@@ -237,7 +237,11 @@ async def main():
 
 
 def run():
-    loop.run_until_complete(main())
+    try:
+        loop.run_until_complete(main())
+    except KeyboardInterrupt:
+        logger.debug("User exit")
+        exit(0)
 
 
 if __name__ == "__main__":
