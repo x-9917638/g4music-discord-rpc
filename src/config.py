@@ -3,21 +3,39 @@ import tomllib
 from typing import Any
 import tomli_w
 
-def get_config() -> dict[str, Any]:  # pyright: ignore[reportExplicitAny]
-    if (config_dir := os.environ.get('XDG_CONFIG_HOME')):
+
+def get_config() -> dict[str, dict[str, Any]]:  # pyright: ignore[reportExplicitAny]
+    if config_dir := os.environ.get("XDG_CONFIG_HOME"):
         CONFIG_DIR = os.path.join(config_dir, "g4music-discord-rpc/")
     else:
-        CONFIG_DIR = os.path.join(os.environ.get("HOME", ""), ".config", "g4music-discord-rpc/")
-
+        CONFIG_DIR = os.path.join(
+            os.environ.get("HOME", ""), ".config", "g4music-discord-rpc/"
+        )
 
     CONFIG_FILE = os.path.join(CONFIG_DIR, "config.toml")
 
     DEFAULT_CONFIG = {
-        "appid": 1436573238636576891,
-        "details": "",
-        "image-hover": "Listening to ${song}",
-        "cover-art": True,
-        "state": "${song} / ${album} - ${artist}"
+        "general": {
+            "appid": 1436573238636576891,
+            "cover-art": True,
+            "show-time": True,
+        },
+        "details": {
+            "text": "",
+            "url": "",
+        },
+        "state": {
+            "text": "${song} / ${album} - ${artist}",
+            "url": "",
+        },
+        "image": {
+            "text": "Listening to ${song}",
+            "url": "",
+        },
+        "buttons": {
+            "1": {"text": "", "url": ""},
+            "2": {"text": "", "url": ""},
+        },
     }
 
     os.makedirs(CONFIG_DIR, exist_ok=True)
@@ -26,4 +44,11 @@ def get_config() -> dict[str, Any]:  # pyright: ignore[reportExplicitAny]
             tomli_w.dump(DEFAULT_CONFIG, f)
 
     with open(CONFIG_FILE, "rb") as f:
-        return tomllib.load(f)
+        conf = tomllib.load(f)
+
+        # Set defaults if they don't exist
+        for k, v in DEFAULT_CONFIG.items():
+            if k not in conf:
+                conf[k] = v
+
+        return conf
