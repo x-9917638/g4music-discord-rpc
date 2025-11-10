@@ -2,11 +2,12 @@ import asyncio
 import time
 from typing import Any
 from dbus_fast.aio.proxy_object import Variant  # pyright: ignore[reportPrivateImportUsage]
+from dbus_fast.errors import DBusError
 from discordrpc import RPC, Button, Activity  # pyright: ignore[reportMissingTypeStubs]
 from dbus_fast.aio import MessageBus, ProxyInterface
 import logging
 from string import Template
-from config import get_config
+from config import get_config  # pyright: ignore[reportMissingTypeStubs]
 import requests
 
 logger = logging.getLogger(__name__)
@@ -18,6 +19,11 @@ POLL_INTERVAL = 2
 song_change = True
 
 CONFIG = get_config()
+
+level = CONFIG["general"].get("log-level")
+if level:
+    logger.level = level
+
 LARGE_TEXT_TEMPLATE = (
     Template(CONFIG["image"]["text"]) if CONFIG["image"]["text"] else None  # pyright: ignore[reportAny]
 )
@@ -107,7 +113,7 @@ async def poll_playback_status(properties) -> str:  # pyright: ignore[reportUnkn
         )
         return status.value if hasattr(status, "value") else status  # pyright: ignore[reportUnknownMemberType, reportUnknownVariableType, reportUnknownArgumentType]
     except Exception as e:
-        logger.error(f"Error polling playback status: {e}")
+        logger.error(f"Error polling playback status: {e=}")
         return "Stopped"
 
 
@@ -116,7 +122,7 @@ async def update_activity(properties: ProxyInterface, app: RPC):
     metadata = await poll_metadata(properties)
     status = await poll_playback_status(properties)
 
-    if status == "stopped":
+    if status == "Stopped":
         app.clear()
         return
 
@@ -198,16 +204,25 @@ async def upload_image(image_path: str) -> str | None:
 
 
 async def main():
-    bus = await MessageBus().connect()
-    introspection = await bus.introspect(
-        "org.mpris.MediaPlayer2.com.github.neithern.g4music", "/org/mpris/MediaPlayer2"
-    )
-    obj = bus.get_proxy_object(
-        "org.mpris.MediaPlayer2.com.github.neithern.g4music",
-        "/org/mpris/MediaPlayer2",
-        introspection,
-    )
-    properties = obj.get_interface("org.freedesktop.DBus.Properties")
+    while True:
+        try:
+            logger.info("Connecting to player")
+            bus = await MessageBus().connect()
+            introspection = await bus.introspect(
+                "org.mpris.MediaPlayer2.com.github.neithern.g4music",
+                "/org/mpris/MediaPlayer2",
+            )
+            obj = bus.get_proxy_object(
+                "org.mpris.MediaPlayer2.com.github.neithern.g4music",
+                "/org/mpris/MediaPlayer2",
+                introspection,
+            )
+            properties = obj.get_interface("org.freedesktop.DBus.Properties")
+            break
+        except DBusError:
+            logger.warning("No player detected, retrying connection.")
+            await asyncio.sleep(2)  
+
     properties.on_properties_changed(on_properties_changed)  # pyright: ignore[reportUnknownMemberType, reportAttributeAccessIssue]
 
     app = get_app()
@@ -221,5 +236,9 @@ async def main():
             await asyncio.sleep(POLL_INTERVAL)
 
 
-if __name__ == "__main__":
+def run():
     loop.run_until_complete(main())
+
+
+if __name__ == "__main__":
+    run()

@@ -1,0 +1,26 @@
+[project]
+name = "g4music-discord-rpc"
+version = "1.0.0"
+authors = [
+  { name="Some1Rxndom", email="None@None.com" },
+]
+description = "Discord Rich Presence for g4music."
+readme = "README.md"
+requires-python = ">=3.9"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: Unix",
+]
+license = "MIT"
+license-files = ["LICEN[CS]E*"]
+
+[project.urls]
+Homepage = "https://github.com/x-9917638/g4music-discord-rpc"
+Issues = "https://github.com/x-9917638/g4music-discord-rpc/issues"
+
+[build-system]
+requires = ["setuptools >= 77.0.3", "dbus-fast >= 2.44.5", "discord-rpc >= 5.5", "requests >= 2.32.5", "tomli_w >= 1.2.0"]
+build-backend = "setuptools.build_meta"
+
+[project.scripts]
+g4music-discord-rpc = "main:run"

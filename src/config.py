@@ -19,6 +19,7 @@ def get_config() -> dict[str, dict[str, Any]]:  # pyright: ignore[reportExplicit
             "appid": 1436573238636576891,
             "cover-art": True,
             "show-time": True,
+            "log-level": 30,  # 30 WARN, 20 INFO, 10 DEBUG,
         },
         "details": {
             "text": "",
