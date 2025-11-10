@@ -1,8 +1,10 @@
 # G4music / Gapless Discord Rich Presence
 Discord Rich Presense for [Gapless](https://gitlab.gnome.org/neithern/g4music)
 
-<img src="./assets/1.png" style="float: right">
-<img src="./assets/2.png" style="float: left">
+<div align="center">
+<img width="300" src="./assets/2.png">
+<img width="500" src="./assets/1.png">
+</div>
 
 ## Features
 - Highly customisable
@@ -12,8 +14,9 @@ Discord Rich Presense for [Gapless](https://gitlab.gnome.org/neithern/g4music)
 - Position display
 
 ## Installation
-> [!CAUTION] Warning
-> g4music, and hence g4music-discord-rpc do NOT work on Windows.
+
+> [!CAUTION]
+> g4music, and hence g4music-discord-rpc, do NOT work on Windows.
 
 There are 2 options for installation:
 1. Pypi
