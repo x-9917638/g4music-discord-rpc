@@ -41,6 +41,15 @@ appid = 1436573238636576891
 cover-art = true
 show-time = true
 log-level = 30
+art-server-url = "https://litterbox.catbox.moe/resources/internals/api.php"
+
+[art-server]
+url = "https://litterbox.catbox.moe/resources/internals/api.php"
+filename = "fileToUpload"
+
+[art-server.data]
+reqtype = "fileupload"
+time = "1h"
 
 [details]
 text = ""
@@ -70,6 +79,9 @@ url = ""
 | `general.cover-art` | Whether or not to display cover art. Please note that if this is `true`, art will be uploaded to [litterbox](https://litterbox.catbox.moe) anonymously. | boolean | `true` |
 | `general.show-time` | Whether or not to show the position that you are at and the length of the song. | boolean | `true` |
 | `general.log-level` | The level of logs that are sent to stdout. Acceptable levels are 30 WARN, 20 INFO, 10 DEBUG. | integer | `30` |
+| `art-server.url` | A URL to an API that hosts images. The API must accept a POST request and return the URL of the uploaded image | string | `"https://litterbox.catbox.moe/resources/internals/api.php"` |
+| `art-server.filename` | The filename to be uploaded to the server. | string | `"fileToUpload"`|
+| `art-server.data` | Data to POST to the API. You may define any keys and values. | table | |
 | `details.text` | The text to display in the details section of the activity. Templating is allowed. Leave as an empty string if unwanted. | string | `""` |
 | `details.url` | The URL that clicking on the activity's details text will open. Leave as an empty string if unwanted. | string | `""` |
 | `state.text` | The text to display in the state section of the activity, typically below the details. Templating is allowed. | string | `"${song} / ${album} - ${artist}"` |

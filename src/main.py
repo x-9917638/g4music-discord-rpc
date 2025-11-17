@@ -1,14 +1,18 @@
 import asyncio
-import time
-from typing import Any
-from dbus_fast.aio.proxy_object import Variant  # pyright: ignore[reportPrivateImportUsage]
-from dbus_fast.errors import DBusError
-from discordrpc import RPC, Button, Activity  # pyright: ignore[reportMissingTypeStubs]
-from dbus_fast.aio import MessageBus, ProxyInterface
 import logging
+import time
 from string import Template
-from config import get_config  # pyright: ignore[reportMissingTypeStubs]
+from typing import Any
+
 import requests
+from dbus_fast.aio import MessageBus, ProxyInterface
+from dbus_fast.aio.proxy_object import (
+    Variant,  # pyright: ignore[reportPrivateImportUsage]
+)
+from dbus_fast.errors import DBusError
+from discordrpc import RPC, Activity, Button  # pyright: ignore[reportMissingTypeStubs]
+
+from config import get_config  # pyright: ignore[reportMissingTypeStubs]
 
 logger = logging.getLogger(__name__)
 logger.level = logging.INFO
@@ -190,12 +194,12 @@ async def upload_image(image_path: str) -> str | None:
     :return: A url to the image on catbox.
     """
     with open(image_path, "rb") as f:
-        files = {"fileToUpload": f}
-        data = {"reqtype": "fileupload", "time": "1h"}
+        files = {CONFIG["art-server"]["filename"]: f}
+        data = CONFIG["art-server"]["data"]  # pyright: ignore[reportAny]
         resp = requests.post(
-            url="https://litterbox.catbox.moe/resources/internals/api.php",
+            url=CONFIG["art-server"]["url"],  # pyright: ignore[reportAny]
             files=files,
-            data=data,
+            data=data,  # pyright: ignore[reportAny]
         )
         resp.raise_for_status()
         if resp.text.startswith("https://"):

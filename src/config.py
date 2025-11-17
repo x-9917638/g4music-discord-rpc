@@ -1,7 +1,8 @@
 import os
-import tomllib
 from typing import Any
+
 import tomli_w
+import tomllib
 
 
 def get_config() -> dict[str, dict[str, Any]]:  # pyright: ignore[reportExplicitAny]
@@ -20,6 +21,12 @@ def get_config() -> dict[str, dict[str, Any]]:  # pyright: ignore[reportExplicit
             "cover-art": True,
             "show-time": True,
             "log-level": 30,  # 30 WARN, 20 INFO, 10 DEBUG,
+            "art-server-url": "https://litterbox.catbox.moe/resources/internals/api.php",
+        },
+        "art-server": {
+            "url": "https://litterbox.catbox.moe/resources/internals/api.php",
+            "filename": "fileToUpload",
+            "data": {"reqtype": "fileupload", "time": "1h"},
         },
         "details": {
             "text": "",
